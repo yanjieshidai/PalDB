@@ -15,20 +15,13 @@
 package com.linkedin.paldb.impl;
 
 import com.linkedin.paldb.api.Configuration;
+import com.linkedin.paldb.api.DuplicateByteKeyException;
 import com.linkedin.paldb.utils.FormatVersion;
 import com.linkedin.paldb.utils.HashUtils;
 import com.linkedin.paldb.utils.LongPacker;
 import com.linkedin.paldb.utils.TempUtils;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.RandomAccessFile;
+
+import java.io.*;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.text.DecimalFormat;
@@ -125,7 +118,7 @@ public class StorageWriter {
 
     // Write if data is not the same
     if (!sameValue) {
-      // Get stream
+      // Get stream, each key length has its own data file
       DataOutputStream dataStream = getDataStream(keyLength);
 
       // Write size and value
@@ -309,6 +302,7 @@ public class StorageWriter {
           for (int probe = 0; probe < count; probe++) {
             int slot = (int) ((hash + probe) % slots);
             byteBuffer.position(slot * slotSize);
+            // transfer byteBuffer to slotBuffer
             byteBuffer.get(slotBuffer);
 
             long found = LongPacker.unpackLong(slotBuffer, keyLength);
@@ -323,8 +317,7 @@ public class StorageWriter {
               collision = true;
               // Check for duplicates
               if (Arrays.equals(keyBuffer, Arrays.copyOf(slotBuffer, keyLength))) {
-                throw new RuntimeException(
-                        String.format("A duplicate key has been found for for key bytes %s", Arrays.toString(keyBuffer)));
+                throw new DuplicateByteKeyException(keyBuffer);
               }
             }
           }

@@ -15,11 +15,14 @@
 package com.linkedin.paldb.impl;
 
 import com.linkedin.paldb.api.Configuration;
+import com.linkedin.paldb.api.DuplicateByteKeyException;
 import com.linkedin.paldb.api.StoreWriter;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -96,6 +99,15 @@ public final class WriterImpl implements StoreWriter {
       storage.close();
       outputStream.close();
       opened = false;
+    } catch (DuplicateByteKeyException e){
+      byte[] key = e.getKey();
+      String keyStr = Arrays.toString(key);
+      try {
+        keyStr = String.valueOf(serialization.deserialize(key));
+      } catch (Exception e1) {
+        //ignore
+      }
+    throw new RuntimeException(String.format("A duplicate key has been found for for key bytes %s", keyStr));
     } catch (IOException ex) {
       throw new RuntimeException(ex);
     }
